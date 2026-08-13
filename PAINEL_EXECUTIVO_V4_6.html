@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<title>IPS · Painel executivo</title>
+<style>
+:root{
+  --tinta:#16232e; --tinta2:#4a5b68; --linha:#d8dee3; --fundo:#fff;
+  --azul:#2c5f7c; --azul-esc:#132b3d; --ambar:#b8873a;
+  --claro:#f4f6f8; --alerta-bg:#fdf6e3; --alerta-br:#8a6d1f;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fundo);color:var(--tinta);
+  font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:56px}
+.wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+.tab{font-variant-numeric:tabular-nums}
+
+/* topo */
+header{background:var(--azul-esc);color:#fff;padding:26px 0 22px}
+header h1{margin:0 0 6px;font-size:23px;letter-spacing:-.3px}
+header p{margin:0;font-size:13px;color:#c3d2dd;max-width:660px}
+.selo{background:var(--alerta-bg);border:1px solid #e3d3a4;border-left:5px solid var(--alerta-br);
+  color:#5c4a12;padding:11px 14px;margin:16px 0 0;font-size:12.5px}
+.selo b{display:block;color:#4a3c0d}
+
+/* abas sem script */
+.radio{position:absolute;opacity:0;width:0;height:0}
+nav.abas{display:flex;gap:0;border-bottom:2px solid var(--linha);margin:22px 0 0;flex-wrap:wrap}
+nav.abas label{padding:11px 16px;font-size:13.5px;font-weight:600;color:var(--tinta2);
+  cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+#a1:checked~.wrap nav.abas label[for=a1],
+#a2:checked~.wrap nav.abas label[for=a2],
+#a3:checked~.wrap nav.abas label[for=a3],
+#a4:checked~.wrap nav.abas label[for=a4],
+#a5:checked~.wrap nav.abas label[for=a5]{color:var(--azul);border-bottom-color:var(--azul)}
+.pane{display:none}
+#a1:checked~.wrap #p1,#a2:checked~.wrap #p2,#a3:checked~.wrap #p3,
+#a4:checked~.wrap #p4,#a5:checked~.wrap #p5{display:block}
+
+/* colunas verticais */
+.colunas{display:flex;align-items:flex-end;gap:14px;height:190px;border-bottom:1px solid var(--tinta);margin:6px 0 8px}
+.colunas .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+.colunas .col i{display:block;width:100%;background:var(--azul);border-radius:2px 2px 0 0}
+.colunas .col .v{font-size:12.5px;font-weight:700;margin-bottom:5px}
+.eixox{display:flex;gap:14px;font-size:11.5px;color:var(--tinta2)}
+.eixox span{flex:1;text-align:center}
+.hbar{display:grid;grid-template-columns:210px 1fr 96px;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid #eef1f3;font-size:13px}
+.hbar .t{position:relative;height:20px;background:var(--claro);border-radius:2px;overflow:hidden}
+.hbar .t i{display:block;height:100%}
+.hbar .n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.destaques{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--linha);border:1px solid var(--linha);margin:8px 0 4px}
+.destaques div{background:#fff;padding:15px 14px}
+.destaques .n{font-size:23px;font-weight:700;letter-spacing:-.6px;color:var(--azul-esc)}
+.destaques .r{font-size:11.5px;color:var(--tinta2);margin-top:5px}
+@media(max-width:760px){.destaques{grid-template-columns:1fr}.hbar{grid-template-columns:1fr;gap:5px}.hbar .n{text-align:left}}
+
+/* kpis compactos */
+.kpirow{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--linha);border:1px solid var(--linha);margin:8px 0 6px}
+.kpirow div{background:#fff;padding:14px 12px}
+.kpirow .n{font-size:20px;font-weight:700;letter-spacing:-.5px;color:var(--azul-esc)}
+.kpirow .r{font-size:11px;color:var(--tinta2);margin-top:4px;line-height:1.35}
+.pos{color:#2f6b4f;font-weight:700}
+.neg{color:#a4432f;font-weight:700}
+/* barra de composicao */
+.compo{display:flex;height:34px;border-radius:3px;overflow:hidden;margin:8px 0 6px}
+.compo span{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11.5px;font-weight:700}
+.compoleg{display:flex;flex-wrap:wrap;gap:16px;font-size:11.5px;color:var(--tinta2);margin-bottom:4px}
+.compoleg i{width:11px;height:11px;display:inline-block;border-radius:2px;margin-right:6px;vertical-align:-1px}
+/* duas colunas */
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+.duas h3,.mapa h3.tit{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--tinta2)}
+.rank{font-size:13px}
+.rank div{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef1f3}
+/* filtros em pilula, reuso */
+#vt:checked~.wrap label[for=vt],#vi:checked~.wrap label[for=vi],#vs:checked~.wrap label[for=vs],
+#vc:checked~.wrap label[for=vc],#va:checked~.wrap label[for=va]
+{background:var(--azul);border-color:var(--azul);color:#fff}
+#vi:checked~.wrap .vr:not(.gi),#vs:checked~.wrap .vr:not(.gs),
+#vc:checked~.wrap .vr:not(.gc),#va:checked~.wrap .vr:not(.ga){display:none}
+#mv:checked~.wrap label[for=mv],#mp:checked~.wrap label[for=mp]
+{background:var(--azul);border-color:var(--azul);color:#fff}
+#mv:checked~.wrap #mapa-p,#mp:checked~.wrap #mapa-v{display:none}
+@media(max-width:760px){.kpirow{grid-template-columns:1fr 1fr}.duas{grid-template-columns:1fr}}
+
+/* linhas do ranking */
+.rk{display:grid;grid-template-columns:30px 34px 250px 1fr 360px;gap:12px;align-items:center;
+  padding:11px 0;border-bottom:1px solid #eef1f3}
+.rk .p{font-size:14px;font-weight:700;color:var(--tinta2);text-align:center}
+.rk .ic{width:30px;height:30px;background:var(--claro);border-radius:5px;display:flex;
+  align-items:center;justify-content:center}
+.rk .ic svg{width:19px;height:19px}
+.rk .nm{font-size:13.5px;font-weight:600;line-height:1.3}
+.rk .nm span{color:var(--azul);font-weight:700;margin-right:6px}
+.rk .ba{position:relative;height:24px;background:var(--claro);border-radius:2px;overflow:hidden}
+.rk .ba i{display:block;height:100%}
+.rk .ba b{position:absolute;right:8px;top:0;line-height:24px;font-size:12.5px;color:#16232e}
+.rk .mt{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;text-align:right}
+.rk .mt div span{display:block;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+.rk .mt div small{display:block;font-size:9.5px;color:var(--tinta2);text-transform:uppercase;letter-spacing:.3px;margin-top:1px}
+.rk .mt .fora span{color:var(--ambar)}
+.cab{display:grid;grid-template-columns:30px 34px 250px 1fr 360px;gap:12px;
+  font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tinta2);
+  border-bottom:2px solid var(--tinta);padding-bottom:6px;font-weight:700}
+.cab .mt{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;text-align:right}
+.resto{display:none}
+#verall:checked~.wrap .resto{display:grid}
+#verall:checked~.wrap .lbl5{display:inline-block}
+#verall:checked~.wrap .lblall{display:none}
+.lbl5{display:none}
+.maisbtn{display:inline-block;margin-top:14px;border:1px solid var(--linha);padding:8px 16px;
+  font-size:12.5px;cursor:pointer;border-radius:3px;color:var(--azul);font-weight:600;background:#fff}
+.faixanota{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--linha);
+  border:1px solid var(--linha);margin:18px 0 0;font-size:11.5px}
+.faixanota div{background:#fff;padding:11px 12px}
+.faixanota b{display:block;font-size:13px;margin-bottom:3px}
+/* filtros extras */
+.filtros-linha{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin:2px 0 14px}
+.filtros-linha .filtlin{margin-bottom:0;align-items:flex-start;flex-direction:column;gap:6px}
+.filtlin{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
+.filtlin>b{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tinta2);width:76px}
+.filtlin select{width:100%}
+/* mapa leaflet */
+#mapa-leaflet{width:100%;height:500px;border:1px solid var(--linha);border-radius:3px;margin-top:6px;z-index:0}
+#mapa-leaflet .lbl-mapa{background:rgba(255,255,255,.9);border:1px solid var(--linha);border-radius:3px;
+  box-shadow:0 1px 3px rgba(0,0,0,.18);font-size:10px;font-weight:600;color:var(--tinta);
+  padding:2px 6px;font-family:inherit}
+.pin-cidade{background:transparent;border:none}
+.pin-cidade .pin{border-radius:50%;text-align:center;font-weight:700;border:2px solid #fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.35);font-variant-numeric:tabular-nums;font-family:inherit}
+@media(max-width:760px){.filtros-linha{grid-template-columns:1fr}#mapa-leaflet{height:380px}}
+@media(max-width:900px){
+  .rk,.cab{grid-template-columns:26px 30px 1fr;gap:9px}
+  .rk .ba,.cab .ba{grid-column:1/-1}
+  .rk .mt,.cab .mt{grid-column:1/-1;text-align:left}
+  .rk .mt div span{font-size:12px}
+  .faixanota{grid-template-columns:1fr 1fr}
+}
+
+h2{font-size:19px;margin:38px 0 3px;letter-spacing:-.2px}
+h2 .n{color:var(--azul);margin-right:8px}
+.chapeu{font-size:14.5px;margin:0 0 14px;max-width:820px}
+.chapeu b{color:var(--azul-esc)}
+
+details{margin:0 0 16px;font-size:12.5px}
+details summary{cursor:pointer;color:var(--tinta2);font-size:12px;list-style:none;
+  display:inline-flex;align-items:center;gap:6px;padding:3px 0}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"i";display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border-radius:50%;border:1px solid #b6c1c9;color:#8b98a3;
+  font-size:10px;font-style:italic;font-weight:700}
+details[open] summary::before{background:var(--azul);border-color:var(--azul);color:#fff}
+details .corpo{background:var(--claro);border-left:3px solid var(--linha);
+  padding:11px 14px;margin-top:7px;color:var(--tinta2);max-width:840px}
+
+/* cartoes de setor */
+.cartao{display:grid;grid-template-columns:236px 1fr 118px 118px;gap:16px;align-items:center;
+  padding:13px 0;border-bottom:1px solid #eef1f3}
+.cartao .set{font-size:13.5px;font-weight:600}
+.cartao .set .cod{display:inline-block;min-width:24px;color:var(--azul);font-weight:700}
+.cartao .set .inst{display:block;font-weight:400;font-size:11.5px;color:var(--tinta2);margin-top:3px}
+.pista{position:relative;height:22px;background:var(--claro);border-radius:2px;overflow:hidden}
+.pista i{display:block;height:100%}
+.pista .med{position:absolute;top:0;bottom:0;width:2px;background:#8b98a3}
+.cartao .vl{text-align:right}
+.cartao .vl .g{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.cartao .vl .p{font-size:11px;color:var(--tinta2);margin-top:2px}
+.escref{display:flex;justify-content:space-between;font-size:11px;color:#8b98a3;margin-top:6px}
+
+/* deslocamento */
+.calcdl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 16px}
+.calcdl b{font-size:12.5px;color:var(--tinta2);font-weight:600}
+.calcdl input{width:110px;padding:8px 10px;font-size:13px;border:1px solid var(--linha);
+  border-radius:3px;color:var(--tinta);font-family:inherit}
+.calcdl input:focus{outline:none;border-color:var(--azul)}
+.calcdl button{border:1px solid var(--azul);background:var(--azul);color:#fff;padding:8px 18px;
+  font-size:13px;font-weight:600;border-radius:3px;cursor:pointer;font-family:inherit}
+.calcdl button:hover{background:var(--azul-esc);border-color:var(--azul-esc)}
+.calcdl .hint{font-size:11.5px;color:#8b98a3}
+.res{display:none}
+.frase{font-size:15px;margin:0 0 14px;max-width:840px;line-height:1.55}
+.frase b{color:var(--azul-esc);font-weight:700}
+.quatro{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--linha);
+  border:1px solid var(--linha)}
+.quatro div{background:#fff;padding:16px 14px}
+.quatro .n{font-size:24px;font-weight:700;letter-spacing:-.6px;color:var(--azul)}
+.quatro .r{font-size:11.5px;color:var(--tinta2);margin-top:5px}
+
+/* mapas */
+.mapas{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:6px}
+.mapa{border:1px solid var(--linha);padding:14px}
+.mapa h3{margin:0 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--tinta2)}
+.mapa svg{width:100%;height:auto;display:block}
+.legmapa{font-size:11px;color:#8b98a3;margin-top:8px;line-height:1.4}
+/* filtros em lista suspensa */
+.filtlin select{padding:7px 9px;font-size:12.5px;border:1px solid var(--linha);border-radius:3px;
+  background:#fff;color:var(--tinta);font-family:inherit}
+.filtlin select:focus{outline:none;border-color:var(--azul)}
+
+/* filtros e lista */
+.filtros{display:flex;gap:7px;flex-wrap:wrap;margin:2px 0 12px}
+.filtros label{border:1px solid var(--linha);padding:6px 12px;font-size:12px;cursor:pointer;
+  border-radius:14px;color:var(--tinta2);background:#fff}
+.cnt{font-size:12.5px;color:var(--tinta2);margin:0 0 7px}
+.caixa{max-height:320px;overflow-y:auto;border:1px solid var(--linha)}
+.caixa table{margin:0}
+.caixa thead th{position:sticky;top:0;background:#fff;z-index:1;box-shadow:0 1px 0 var(--tinta)}
+
+/* tabelas */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--linha);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left;font-variant-numeric:normal}
+thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--tinta2);
+  border-bottom:2px solid var(--tinta);font-weight:700;vertical-align:bottom}
+tbody tr:nth-child(odd){background:#fafbfc}
+caption{caption-side:bottom;text-align:left;font-size:11.5px;color:var(--tinta2);padding-top:9px}
+
+/* agenda */
+.agenda{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:4px}
+.tri{border-top:3px solid var(--azul);padding-top:11px}
+.tri .q{font-size:11.5px;color:var(--tinta2);text-transform:uppercase;letter-spacing:.5px}
+.tri .v{font-size:21px;font-weight:700;letter-spacing:-.5px;margin-top:3px}
+.tri .b{height:6px;background:var(--azul);margin-top:9px;border-radius:2px}
+.fecho{margin-top:20px;padding:14px 16px;background:var(--claro);border-left:4px solid var(--ambar);
+  font-size:14px;max-width:840px}
+.nota{font-size:11.5px;color:var(--tinta2);border-top:1px solid var(--linha);padding-top:13px;margin-top:34px}
+
+@media(max-width:760px){
+  .quatro{grid-template-columns:1fr 1fr}
+  .mapas{grid-template-columns:1fr}
+  .agenda{grid-template-columns:1fr 1fr}
+  .cartao{grid-template-columns:1fr;gap:7px}
+  .cartao .vl{text-align:left;display:flex;gap:8px;align-items:baseline}
+  .cartao .vl .p{margin:0}
+  .wrap{padding:0 15px}
+  header h1{font-size:20px}
+}
+</style>
+</head>
+<body>
+
+<input class="radio" type="radio" name="aba" id="a1" checked>
+<input class="radio" type="radio" name="aba" id="a2">
+<input class="radio" type="radio" name="aba" id="a3">
+<input class="radio" type="radio" name="aba" id="a4">
+<input class="radio" type="radio" name="aba" id="a5">
+<input class="radio" type="radio" name="fvcr" id="vt" checked>
+<input class="radio" type="radio" name="fvcr" id="vi">
+<input class="radio" type="radio" name="fvcr" id="vs">
+<input class="radio" type="radio" name="fvcr" id="vc">
+<input class="radio" type="radio" name="fvcr" id="va">
+<input class="radio" type="radio" name="fmapa" id="mv" checked>
+<input class="radio" type="radio" name="fmapa" id="mp">
+<input class="radio" type="radio" name="ver" id="ver5" checked>
+<input class="radio" type="radio" name="ver" id="verall">
+
+<div class="wrap">
+
+<header style="margin:0 -22px;padding-left:22px;padding-right:22px">
+  <h1>Compra pública como instrumento de desenvolvimento</h1>
+  <p>Índice de Prioridade Setorial · Governo do Estado da Bahia · exercícios de 2021 a 2025</p>
+</header>
+
+<div class="selo"><b>Simulação de layout. Distinga a origem dos números antes de citar.</b>
+Os agregados de compra pública, valor total, série anual, concentração por grupo, contratação direta, participação de micro e pequena empresa, fragmentação e origem por unidade da federação, foram apurados na base SIMPAS da SAEB. Todo o resto é ilustrativo: recortes por divisão CNAE, notas do índice, multiplicadores, dados de estrutura produtiva e razões sociais. Depende da RAIS, do CNPJ da Receita Federal e do Atlas Econômico do IPEA, ainda não incorporados.</div>
+
+<nav class="abas">
+  <label for="a1">Painel executivo</label>
+  <label for="a4">Perfil das compras</label>
+  <label for="a5">Estrutura produtiva</label>
+  <label for="a2">Análise técnica</label>
+  <label for="a3">Apêndice metodológico</label>
+</nav>
+
+<!-- ============ ABA 1 ============ -->
+<section class="pane" id="p1">
+
+  <h2><span class="n">1</span>Setores prioritários da compra pública</h2>
+  <p class="chapeu">Nota de 0 a 10 que ordena os setores industriais pela importância da compra pública estadual. Exemplo de leitura: farmoquímicos tem nota <b>9,6</b> porque reúne o maior volume contratado do período, R$ 6,1 bilhões, um padrão de compra previsível ao longo dos cinco anos e tendência de alta.</p>
+
+  <details><summary>Como a nota é calculada</summary>
+    <div class="corpo">A nota combina três critérios. <b>Volume</b>, peso 40%, é a soma do valor contratado entre 2021 e 2025 dividida pela maior soma do universo, e mede o tamanho do mercado. <b>Consistência</b>, peso 30%, é o R² da regressão linear do valor contra o ano, variando de 0 a 1, e mede a previsibilidade do padrão de compra. <b>Tendência</b>, peso 30%, é a inclinação da reta dividida pela maior inclinação do universo, e mede a força da mudança. A soma ponderada é multiplicada por 10. Os pesos exibidos são provisórios e serão substituídos pelos obtidos por componentes principais, de modo que nenhum peso seja arbitrado. Fonte: SIMPAS da Secretaria da Administração do Estado da Bahia, exercícios de 2021 a 2025.</div>
+  </details>
+
+  <div class="cab">
+    <div></div><div></div><div>Setor</div><div>Nota IPS</div>
+    <div class="mt"><div>Contratado</div><div>Sai da BA</div></div>
+  </div>
+
+  <div class="rk">
+    <div class="p">1º</div>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="#2c5f7c"><path d="M5 12a4 4 0 0 1 4-4h6a4 4 0 0 1 0 8H9a4 4 0 0 1-4-4z"/><rect x="11.2" y="8" width="1.6" height="8" fill="#fff"/></svg></div>
+    <div class="nm"><span>21</span>Farmoquímicos e farmacêuticos</div>
+    <div class="ba"><i style="width:96%;background:#2c5f7c"></i><b>9,6</b></div>
+    <div class="mt">
+      <div><span>R$ 6,1 bi</span><small>contratado</small></div>
+      <div class="fora"><span>42%</span><small>sai da BA</small></div>
+    </div>
+  </div>
+
+  <div class="rk">
+    <div class="p">2º</div>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="#2c5f7c"><path d="M3 4h18v12H3z"/><path d="M9 19h6v2H9z"/></svg></div>
+    <div class="nm"><span>62</span>Serviços de tecnologia da informação</div>
+    <div class="ba"><i style="width:80%;background:#2c5f7c"></i><b>8,0</b></div>
+    <div class="mt">
+      <div><span>R$ 4,2 bi</span><small>contratado</small></div>
+      <div class="fora"><span>29%</span><small>sai da BA</small></div>
+    </div>
+  </div>
+
+  <div class="rk">
+    <div class="p">3º</div>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="#2c5f7c"><path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M11 3h2v6h-2z"/></svg></div>
+    <div class="nm"><span>10</span>Produtos alimentícios</div>
+    <div class="ba"><i style="width:60%;background:#2c5f7c"></i><b>6,0</b></div>
+    <div class="mt">
+      <div><span>R$ 3,3 bi</span><small>contratado</small></div>
+      <div class="fora"><span>34%</span><small>sai da BA</small></div>
+    </div>
+  </div>
+
+  <div class="rk">
+    <div class="p">4º</div>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="#2c5f7c"><path d="M4 16l1-5h14l1 5v3h-3v-2H7v2H4z"/></svg></div>
+    <div class="nm"><span>29</span>Veículos automotores</div>
+    <div class="ba"><i style="width:49%;background:#2c5f7c"></i><b>4,9</b></div>
+    <div class="mt">
+      <div><span>R$ 2,8 bi</span><small>contratado</small></div>
+      <div class="fora"><span>78%</span><small>sai da BA</small></div>
+    </div>
+  </div>
+
+  <div class="rk">
+    <div class="p">5º</div>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="#2c5f7c"><path d="M8 3L4 6l2 3 1-1v12h10V8l1 1 2-3-4-3-2 2a2 2 0 0 1-4 0z"/></svg></div>
+    <div class="nm"><span>14</span>Confecção de artigos do vestuário</div>
+    <div class="ba"><i style="width:40%;background:#2c5f7c"></i><b>4,0</b></div>
+    <div class="mt">
+      <div><span>R$ 1,5 bi</span><small>contratado</small></div>
+      <div class="fora"><span>26%</span><small>sai da BA</small></div>
+    </div>
+  </div>
+
+  <div class="rk resto">
+    <div class="p">6º</div>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="#7f9bab"><path d="M9 3v6l-5 10a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3L15 9V3z"/></svg></div>
+    <div class="nm"><span>20</span>Produtos químicos</div>
+    <div class="ba"><i style="width:37%;background:#b0c4d0"></i><b>3,7</b></div>
+    <div class="mt">
+      <div><span>R$ 2,4 bi</span><small>contratado</small></div>
+      <div class="fora"><span>51%</span><small>sai da BA</small></div>
+    </div>
+  </div>
+
+  <div class="rk resto">
+    <div class="p">7º</div>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="#7f9bab"><path d="M7 3h10v2h-2v14h2v2H7v-2h2V5H7z"/></svg></div>
+    <div class="nm"><span>13</span>Produtos têxteis</div>
+    <div class="ba"><i style="width:29%;background:#b0c4d0"></i><b>2,9</b></div>
+    <div class="mt">
+      <div><span>R$ 0,9 bi</span><small>contratado</small></div>
+      <div class="fora"><span>31%</span><small>sai da BA</small></div>
+    </div>
+  </div>
+
+  <div class="rk resto">
+    <div class="p">8º</div>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="#7f9bab"><path d="M12 3S5 11 5 15a7 7 0 0 0 14 0c0-4-7-12-7-12z"/></svg></div>
+    <div class="nm"><span>22</span>Borracha e material plástico</div>
+    <div class="ba"><i style="width:27%;background:#b0c4d0"></i><b>2,7</b></div>
+    <div class="mt">
+      <div><span>R$ 1,1 bi</span><small>contratado</small></div>
+      <div class="fora"><span>44%</span><small>sai da BA</small></div>
+    </div>
+  </div>
+
+  <div class="rk resto">
+    <div class="p">9º</div>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="#7f9bab"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg></div>
+    <div class="nm"><span>25</span>Produtos de metal</div>
+    <div class="ba"><i style="width:20%;background:#b0c4d0"></i><b>2,0</b></div>
+    <div class="mt">
+      <div><span>R$ 0,6 bi</span><small>contratado</small></div>
+      <div class="fora"><span>39%</span><small>sai da BA</small></div>
+    </div>
+  </div>
+
+  <div class="rk resto">
+    <div class="p">10º</div>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="#7f9bab"><path d="M12 2l9 5v10l-9 5-9-5V7z"/></svg></div>
+    <div class="nm"><span>23</span>Minerais não metálicos</div>
+    <div class="ba"><i style="width:18%;background:#b0c4d0"></i><b>1,8</b></div>
+    <div class="mt">
+      <div><span>R$ 0,7 bi</span><small>contratado</small></div>
+      <div class="fora"><span>36%</span><small>sai da BA</small></div>
+    </div>
+  </div>
+
+  <label class="maisbtn lblall" for="verall">Mostrar todos os setores</label>
+  <label class="maisbtn lbl5" for="ver5">Mostrar apenas os cinco primeiros</label>
+
+  <div class="faixanota">
+    <div><b>Acima de 6,0</b>Setor muito importante, com volume alto e padrão consistente. Prioridade máxima.</div>
+    <div><b>De 4,0 a 6,0</b>Setor moderadamente importante. Monitoramento regular.</div>
+    <div><b>De 2,0 a 4,0</b>Setor pouco importante. Atenção se houver crescimento.</div>
+    <div><b>Abaixo de 2,0</b>Setor irrelevante, com volume baixo ou padrão instável. Baixa prioridade.</div>
+  </div>
+
+  <h2><span class="n">2</span>Impacto econômico da compra pública</h2>
+  <p class="chapeu">A decisão não é comprar mais, é comprar dos mesmos setores em fornecedor baiano. Exemplo de leitura: hoje o Estado contrata R$ 3,58 bilhões por ano nos cinco setores prioritários. Deslocar parte disso de fornecedor de fora para indústria local produz o efeito abaixo, calculado sobre a matriz insumo-produto da Bahia.</p>
+
+  <div class="calcdl">
+    <b>Deslocar</b>
+    <input type="number" id="pp" min="1" max="100" step="1" value="10" inputmode="numeric">
+    <b>pontos percentuais para indústria baiana</b>
+    <button type="button" id="calcular">Calcular</button>
+    <span class="hint">Digite o deslocamento desejado, de 1 a 100 pontos percentuais.</span>
+  </div>
+
+  <div class="res" id="resultado" aria-live="polite"></div>
+
+  <details style="margin-top:14px"><summary>Como o impacto é calculado</summary>
+    <div class="corpo">O valor deslocado é multiplicado pelos multiplicadores de impacto da matriz insumo-produto inter-regional da Bahia, um para cada resultado: produção, PIB a preços de fatores, renda do trabalho, arrecadação de impostos indiretos e emprego em postos por ano. Cada setor tem multiplicadores próprios, e o resultado exibido é a soma dos cinco setores prioritários ponderada pelo valor contratado de cada um. Produção é sempre maior que PIB porque conta tudo o que gira na cadeia: quando o Estado compra um remédio, a fábrica compra embalagem, a embalagem compra papel, e cada compra entra na conta. O PIB conta apenas o valor que cada elo acrescenta, sem repetir o que já foi contado, e por isso é o que de fato fica de riqueza nova no estado. Fonte prevista: Atlas Econômico, IPEA e Receita Federal, matrizes insumo-produto inter-regionais em 68 atividades.</div>
+  </details>
+
+  <h2><span class="n">3</span>Onde estão as empresas dos setores prioritários</h2>
+  <p class="chapeu">Indústrias instaladas na Bahia nos setores do ranking. Use os filtros para localizar fornecedores por setor, município e porte.</p>
+
+  <div class="filtros-linha">
+    <div class="filtlin"><b>Setor</b>
+      <select id="fsetor" aria-label="Filtrar por setor">
+        <option value="todos" selected>Todos os setores</option>
+        <option value="21">21 Farmoquímicos e farmacêuticos</option>
+        <option value="62">62 Serviços de tecnologia da informação</option>
+        <option value="10">10 Produtos alimentícios</option>
+        <option value="20">20 Produtos químicos</option>
+        <option value="14">14 Confecção de artigos do vestuário</option>
+        <option value="13">13 Produtos têxteis</option>
+      </select>
+    </div>
+    <div class="filtlin"><b>Município</b>
+      <select id="fmunicipio" aria-label="Filtrar por município">
+        <option value="todos" selected>Todos os municípios</option>
+        <option value="sal">Salvador</option>
+        <option value="fsa">Feira de Santana</option>
+        <option value="cam">Camaçari</option>
+        <option value="int">Demais municípios</option>
+      </select>
+    </div>
+    <div class="filtlin"><b>Porte</b>
+      <select id="fporte" aria-label="Filtrar por porte">
+        <option value="todos" selected>Todos os portes</option>
+        <option value="gr">Grande</option>
+        <option value="me">Médio</option>
+        <option value="pe">Pequeno</option>
+        <option value="mi">Micro</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="mapa-leaflet"></div>
+  <div class="legmapa">Mapa real da Bahia com os municípios onde estão as empresas da lista. O número dentro de cada círculo indica quantas empresas atendem aos filtros selecionados, e o tamanho do círculo é proporcional a essa contagem. Fundo cartográfico: OpenStreetMap.</div>
+
+  <p class="cnt" id="contador" style="margin-top:20px">36 empresas nos seis setores prioritários</p>
+
+  <div class="caixa">
+    <table>
+      <thead><tr><th>Empresa</th><th>Município</th><th>Porte</th><th>Classificação</th><th>Contratado</th></tr></thead>
+      <tbody>
+        <tr class="emp s21 mu-sal po-gr"><td>Indústria Farmacêutica Alfa Ltda</td><td>Salvador</td><td>Grande</td><td>Indústria</td><td>R$ 412,6 mi</td></tr>
+        <tr class="emp s21 mu-cam po-me"><td>Laboratório Farmoquímico Bahia Ltda</td><td>Camaçari</td><td>Médio</td><td>Indústria</td><td>R$ 188,4 mi</td></tr>
+        <tr class="emp s21 mu-fsa po-me"><td>Sertão Medicamentos Ltda</td><td>Feira de Santana</td><td>Médio</td><td>Indústria</td><td>R$ 96,1 mi</td></tr>
+        <tr class="emp s21 mu-sal po-pe"><td>Distribuidora Hospitalar Recôncavo Ltda</td><td>Salvador</td><td>Pequeno</td><td>Comércio</td><td>R$ 54,3 mi</td></tr>
+        <tr class="emp s21 mu-int po-me"><td>Farmoquímica Litoral Norte S.A.</td><td>Candeias</td><td>Médio</td><td>Indústria</td><td>R$ 41,8 mi</td></tr>
+        <tr class="emp s21 mu-int po-pe"><td>Insumos Farmacêuticos Paraguaçu Ltda</td><td>Alagoinhas</td><td>Pequeno</td><td>Indústria</td><td>R$ 12,7 mi</td></tr>
+
+        <tr class="emp s62 mu-sal po-gr"><td>Sistemas Baía de Todos os Santos Ltda</td><td>Salvador</td><td>Grande</td><td>Indústria</td><td>R$ 306,9 mi</td></tr>
+        <tr class="emp s62 mu-fsa po-me"><td>Tecnologia Sertaneja Software Ltda</td><td>Feira de Santana</td><td>Médio</td><td>Indústria</td><td>R$ 142,2 mi</td></tr>
+        <tr class="emp s62 mu-int po-me"><td>Dados e Sistemas Atlântico Ltda</td><td>Lauro de Freitas</td><td>Médio</td><td>Indústria</td><td>R$ 88,5 mi</td></tr>
+        <tr class="emp s62 mu-int po-pe"><td>Conquista Soluções Digitais Ltda</td><td>Vitória da Conquista</td><td>Pequeno</td><td>Indústria</td><td>R$ 37,4 mi</td></tr>
+        <tr class="emp s62 mu-sal po-pe"><td>Revenda de Equipamentos Cabrália Ltda</td><td>Salvador</td><td>Pequeno</td><td>Comércio</td><td>R$ 29,8 mi</td></tr>
+        <tr class="emp s62 mu-int po-mi"><td>Cooperativa de Desenvolvedores Chapada</td><td>Jequié</td><td>Micro</td><td>Indústria</td><td>R$ 6,3 mi</td></tr>
+
+        <tr class="emp s10 mu-int po-gr"><td>Alimentos São Francisco S.A.</td><td>Juazeiro</td><td>Grande</td><td>Indústria</td><td>R$ 271,5 mi</td></tr>
+        <tr class="emp s10 mu-int po-gr"><td>Beneficiadora de Grãos Oeste Ltda</td><td>Luís Eduardo Magalhães</td><td>Grande</td><td>Indústria</td><td>R$ 164,0 mi</td></tr>
+        <tr class="emp s10 mu-int po-me"><td>Laticínios Chapada Diamantina Ltda</td><td>Jequié</td><td>Médio</td><td>Indústria</td><td>R$ 77,9 mi</td></tr>
+        <tr class="emp s10 mu-int po-pe"><td>Cooperativa Agroindustrial do Recôncavo</td><td>Alagoinhas</td><td>Pequeno</td><td>Indústria</td><td>R$ 43,2 mi</td></tr>
+        <tr class="emp s10 mu-sal po-pe"><td>Panificadora Industrial Itapuã Ltda</td><td>Salvador</td><td>Pequeno</td><td>Indústria</td><td>R$ 21,6 mi</td></tr>
+        <tr class="emp s10 mu-int po-me"><td>Atacadista de Gêneros Cacau Ltda</td><td>Itabuna</td><td>Médio</td><td>Comércio</td><td>R$ 18,4 mi</td></tr>
+
+        <tr class="emp s20 mu-cam po-gr"><td>Petroquímica Camaçari Insumos S.A.</td><td>Camaçari</td><td>Grande</td><td>Indústria</td><td>R$ 224,8 mi</td></tr>
+        <tr class="emp s20 mu-int po-gr"><td>Química Industrial Aratu Ltda</td><td>Simões Filho</td><td>Grande</td><td>Indústria</td><td>R$ 131,7 mi</td></tr>
+        <tr class="emp s20 mu-int po-me"><td>Saneantes Bahia Norte Ltda</td><td>Candeias</td><td>Médio</td><td>Indústria</td><td>R$ 62,4 mi</td></tr>
+        <tr class="emp s20 mu-sal po-me"><td>Comercial de Produtos Químicos Baía Ltda</td><td>Salvador</td><td>Médio</td><td>Comércio</td><td>R$ 48,9 mi</td></tr>
+        <tr class="emp s20 mu-fsa po-pe"><td>Fertilizantes Vale do Iguape Ltda</td><td>Feira de Santana</td><td>Pequeno</td><td>Indústria</td><td>R$ 19,3 mi</td></tr>
+        <tr class="emp s20 mu-sal po-mi"><td>Reagentes Laboratoriais Pituba Ltda</td><td>Salvador</td><td>Micro</td><td>Comércio</td><td>R$ 5,1 mi</td></tr>
+
+        <tr class="emp s14 mu-fsa po-me"><td>Confecções Bahia Vestuário Ltda</td><td>Feira de Santana</td><td>Médio</td><td>Indústria</td><td>R$ 148,3 mi</td></tr>
+        <tr class="emp s14 mu-int po-me"><td>Uniformes Profissionais Sertão Ltda</td><td>Vitória da Conquista</td><td>Médio</td><td>Indústria</td><td>R$ 91,7 mi</td></tr>
+        <tr class="emp s14 mu-int po-pe"><td>Cooperativa de Costureiras do Recôncavo</td><td>Santo Antônio de Jesus</td><td>Pequeno</td><td>Indústria</td><td>R$ 46,2 mi</td></tr>
+        <tr class="emp s14 mu-int po-pe"><td>Malharia Litoral Sul Ltda</td><td>Ilhéus</td><td>Pequeno</td><td>Indústria</td><td>R$ 28,4 mi</td></tr>
+        <tr class="emp s14 mu-int po-mi"><td>Fardamentos Paulo Afonso Ltda</td><td>Paulo Afonso</td><td>Micro</td><td>Indústria</td><td>R$ 11,9 mi</td></tr>
+        <tr class="emp s14 mu-sal po-pe"><td>Distribuidora de Vestuário Barra Ltda</td><td>Salvador</td><td>Pequeno</td><td>Comércio</td><td>R$ 9,6 mi</td></tr>
+
+        <tr class="emp s13 mu-int po-gr"><td>Têxtil Vale do Jiquiriçá S.A.</td><td>Jequié</td><td>Grande</td><td>Indústria</td><td>R$ 96,4 mi</td></tr>
+        <tr class="emp s13 mu-int po-me"><td>Fiação e Tecelagem Barreiras Ltda</td><td>Barreiras</td><td>Médio</td><td>Indústria</td><td>R$ 58,1 mi</td></tr>
+        <tr class="emp s13 mu-cam po-me"><td>Tecidos Industriais Camaçari Ltda</td><td>Camaçari</td><td>Médio</td><td>Indústria</td><td>R$ 34,7 mi</td></tr>
+        <tr class="emp s13 mu-int po-pe"><td>Beneficiadora de Algodão Oeste Ltda</td><td>Luís Eduardo Magalhães</td><td>Pequeno</td><td>Indústria</td><td>R$ 22,5 mi</td></tr>
+        <tr class="emp s13 mu-int po-pe"><td>Artefatos Têxteis Ilhéus Ltda</td><td>Ilhéus</td><td>Pequeno</td><td>Indústria</td><td>R$ 14,8 mi</td></tr>
+        <tr class="emp s13 mu-sal po-mi"><td>Comercial de Tecidos Cidade Baixa Ltda</td><td>Salvador</td><td>Micro</td><td>Comércio</td><td>R$ 4,2 mi</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:11.5px;color:var(--tinta2);margin-top:9px">Razões sociais fictícias, criadas apenas para demonstrar o formato. Nenhuma corresponde a empresa existente.</p>
+
+</section>
+
+<!-- ============ ABA COMPRAS ============ -->
+<section class="pane" id="p4">
+
+  <div class="kpirow">
+    <div><div class="n tab">R$ 94,7 bi</div><div class="r">Contratado entre 2021 e 2025, em 872 mil itens</div></div>
+    <div><div class="n tab">R$ 3,09 bi</div><div class="r">Compras de materiais industriais em 2025</div></div>
+    <div><div class="n tab pos">+27,0%</div><div class="r">Crescimento das compras industriais entre 2023 e 2025</div></div>
+    <div><div class="n tab">R$ 1,20 bi</div><div class="r">Atendido por fornecedor da Bahia, 38,7% do industrial</div></div>
+    <div><div class="n tab" style="color:var(--ambar)">R$ 1,85 bi</div><div class="r">Atendido por fornecedor de outro estado, 59,8%</div></div>
+  </div>
+
+  <h2>O que o Estado compra</h2>
+  <p class="chapeu">Entre 2021 e 2025 o Estado contratou <b>R$ 94,7 bilhões</b> em 872 mil itens de ordens de fornecimento. O valor oscila fortemente de um ano para outro, o que separa a compra corrente do contrato de grande porte.</p>
+
+  <div class="colunas">
+    <div class="col"><span class="v tab">14,0</span><i style="height:55%"></i></div>
+    <div class="col"><span class="v tab">21,8</span><i style="height:85%"></i></div>
+    <div class="col"><span class="v tab">13,3</span><i style="height:52%"></i></div>
+    <div class="col"><span class="v tab">25,6</span><i style="height:100%"></i></div>
+    <div class="col"><span class="v tab">20,0</span><i style="height:78%"></i></div>
+  </div>
+  <div class="eixox"><span>2021</span><span>2022</span><span>2023</span><span>2024</span><span>2025</span></div>
+  <p style="font-size:12.5px;color:var(--tinta2);margin-top:10px">Valores em R$ bilhões, a preços de 2025. A amplitude entre o melhor e o pior ano é de 132 pontos percentuais. Planejamento de compra não pode ser calibrado pela média anual.</p>
+
+  <h2>Para onde vai o dinheiro</h2>
+  <p class="chapeu">Doze grupos de licitação concentram 80% do valor contratado. Priorizar equipe técnica fora desses grupos é dispersar esforço.</p>
+
+  <div class="hbar"><div>Obras civis</div><div class="t"><i style="width:100%;background:#2d607c"></i></div><div class="n">R$ 32,5 bi</div></div>
+  <div class="hbar"><div>Organização e administração hospitalar</div><div class="t"><i style="width:33%;background:#3a6d88"></i></div><div class="n">R$ 10,8 bi</div></div>
+  <div class="hbar"><div>Materiais hospitalares e laboratoriais</div><div class="t"><i style="width:19%;background:#487a94"></i></div><div class="n">R$ 6,1 bi</div></div>
+  <div class="hbar"><div>Publicidade institucional</div><div class="t"><i style="width:16%;background:#5688a0"></i></div><div class="n">R$ 5,2 bi</div></div>
+  <div class="hbar"><div>Administração de cartão e vales</div><div class="t"><i style="width:11%;background:#6496ac"></i></div><div class="n">R$ 3,6 bi</div></div>
+  <div class="hbar"><div>Demais grupos</div><div class="t"><i style="width:112%;background:#c9d2d8"></i></div><div class="n">R$ 36,5 bi</div></div>
+
+  <details style="margin-top:14px"><summary>Por que obras civis não entram na priorização</summary>
+    <div class="corpo">Obras civis são o maior item de despesa, mas a execução acontece onde a obra está, e o fornecimento é local por natureza. Não existe decisão de compra local a tomar, porque não existe alternativa de comprar de fora. Por isso a construção foi excluída do universo do índice, com a justificativa declarada, e não por omissão.</div>
+  </details>
+
+  <h2>Três fatos que exigem decisão</h2>
+  <div class="destaques">
+    <div><div class="n tab">27,2%</div><div class="r">Do valor contratado foi para fornecedor sediado fora da Bahia, o equivalente a R$ 25,7 bilhões</div></div>
+    <div><div class="n tab">20,7%</div><div class="r">Do valor foi contratado por dispensa ou inexigibilidade, sem disputa de preço</div></div>
+    <div><div class="n tab">7,9%</div><div class="r">Do valor foi para microempresa e empresa de pequeno porte, muito abaixo do que a legislação permite</div></div>
+  </div>
+
+  <p class="chapeu" style="margin-top:26px">Há ainda <b>R$ 4,3 bilhões</b> em compras fragmentadas, ou seja, a mesma unidade comprando o mesmo item quatro ou mais vezes no mesmo ano. São 16.958 casos e representam 31,3% do valor de materiais. É a fila natural de registro de preços e compra centralizada, com valor já quantificado.</p>
+
+  <h2>Quem compra dentro do governo</h2>
+  <p class="chapeu">A trajetória por secretaria divide o governo em dois grupos. Um cresce e outro encolhe, e um painel que mostrasse apenas participação percentual esconderia exatamente essa divergência.</p>
+
+  <div class="duas">
+    <div>
+      <h3>Cresceram entre 2021 e 2025</h3>
+      <div class="rank">
+        <div><span>Saúde</span><span class="pos tab">+64,4%</span></div>
+        <div><span>Desenvolvimento Urbano</span><span class="pos tab">+49,1%</span></div>
+      </div>
+      <h3 style="margin-top:20px">Recuaram no mesmo período</h3>
+      <div class="rank">
+        <div><span>Educação</span><span class="neg tab">-6,6%</span></div>
+        <div><span>Segurança Pública</span><span class="neg tab">-27,4%</span></div>
+        <div><span>Infraestrutura</span><span class="neg tab">-33,8%</span></div>
+        <div><span>Infraestrutura Hídrica</span><span class="neg tab">-60,5%</span></div>
+      </div>
+    </div>
+    <div>
+      <h3>Ticket médio por ordem em 2025</h3>
+      <div class="rank">
+        <div><span>Comunicação Social</span><span class="tab">R$ 20,3 mi</span></div>
+        <div><span>Desenvolvimento Urbano</span><span class="tab">R$ 7,2 mi</span></div>
+        <div><span>Educação</span><span class="tab">R$ 301 mil</span></div>
+        <div><span>Saúde</span><span class="tab">R$ 144 mil</span></div>
+        <div><span>Segurança Pública</span><span class="tab">R$ 124 mil</span></div>
+      </div>
+      <p style="font-size:12px;color:var(--tinta2);margin-top:12px">O ticket médio define o modelo de gestão de cada órgão. Comunicação Social opera poucos contratos de valor alto e exige controle contratual. Saúde e Segurança operam volume alto de compras pequenas e exigem registro de preços e centralização.</p>
+    </div>
+  </div>
+
+  <h2>O que é indústria e o que não é</h2>
+  <p class="chapeu">Nem toda compra pode gerar produção. Separar o que uma indústria fornece do que é obra, serviço de gestão ou benefício é o primeiro filtro de qualquer política de indução.</p>
+
+  <div class="compoleg">
+    <span><i style="background:#2c5f7c"></i>Materiais industriais</span>
+    <span><i style="background:#6496ac"></i>Obras e serviços de engenharia</span>
+    <span><i style="background:#9fbccb"></i>Serviços de gestão e publicidade</span>
+    <span><i style="background:#c9d2d8"></i>Benefícios e demais</span>
+  </div>
+  <div class="compo">
+    <span style="width:29%;background:#2c5f7c">29%</span>
+    <span style="width:34%;background:#6496ac">34%</span>
+    <span style="width:22%;background:#9fbccb">22%</span>
+    <span style="width:15%;background:#c9d2d8;color:#16232e">15%</span>
+  </div>
+  <p style="font-size:12px;color:var(--tinta2)">Participação sobre o total contratado no período. Apenas a primeira faixa entra no universo do índice.</p>
+
+  <h2>Compras industriais: para onde vai e de onde vem</h2>
+  <p class="chapeu">Em 2025 as compras de materiais industriais somaram <b>R$ 3,09 bilhões</b>, com alta de 27,0% sobre 2023. Os dez maiores setores concentraram 76% do volume.</p>
+
+  <div class="colunas" style="height:150px">
+    <div class="col"><span class="v tab">2,43</span><i style="height:79%"></i></div>
+    <div class="col"><span class="v tab">3,09</span><i style="height:100%"></i></div>
+  </div>
+  <div class="eixox"><span>2023</span><span>2025</span></div>
+  <p style="font-size:12px;color:var(--tinta2);margin-top:8px">Valores em R$ bilhões. No mesmo intervalo o conjunto das compras públicas do estado cresceu 37%, ou seja, a compra industrial cresceu menos que o total.</p>
+
+  <div class="duas" style="margin-top:26px">
+    <div>
+      <h3>Maiores setores em 2025</h3>
+      <div class="hbar" style="grid-template-columns:1fr 90px"><div>Produtos farmacêuticos</div><div class="n">R$ 886,1 mi</div></div>
+      <div class="hbar" style="grid-template-columns:1fr 90px"><div>Automóveis</div><div class="n">R$ 506,3 mi</div></div>
+      <div class="hbar" style="grid-template-columns:1fr 90px"><div>Demais oito do top 10</div><div class="n">R$ 956,4 mi</div></div>
+      <div class="hbar" style="grid-template-columns:1fr 90px"><div>Todos os demais setores</div><div class="n">R$ 741,2 mi</div></div>
+    </div>
+    <div>
+      <h3>Origem do fornecimento em 2025</h3>
+      <div class="compoleg" style="margin-top:4px">
+        <span><i style="background:#2c5f7c"></i>Bahia</span>
+        <span><i style="background:var(--ambar)"></i>Outros estados</span>
+        <span><i style="background:#c9d2d8"></i>Importação</span>
+      </div>
+      <div class="compo">
+        <span style="width:38.7%;background:#2c5f7c">38,7%</span>
+        <span style="width:59.8%;background:#b8873a">59,8%</span>
+        <span style="width:1.5%;background:#c9d2d8"></span>
+      </div>
+      <div class="rank" style="margin-top:8px">
+        <div><span>Fornecedor baiano</span><span class="tab">R$ 1,20 bi</span></div>
+        <div><span>Outros estados, liderados por São Paulo com 43,3%</span><span class="tab">R$ 1,85 bi</span></div>
+        <div><span>Importação</span><span class="tab">R$ 45 mi</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>De onde vem o fornecimento</h2>
+  <p class="chapeu">Distribuição das compras industriais por unidade da federação de origem do fornecedor. Escolha a métrica.</p>
+
+  <div class="filtros">
+    <label for="mv">Valor contratado</label>
+    <label for="mp">Participação no total</label>
+  </div>
+
+  <div class="mapa" id="mapa-v">
+    <h3 class="tit">Valor contratado por origem, 2025</h3>
+    <svg viewBox="0 0 620 260" height="260" role="img" aria-label="Esquema do Brasil com valor contratado por unidade da federação">
+      <rect x="0" y="0" width="620" height="260" fill="#f4f6f8"/>
+      <circle cx="330" cy="150" r="54" fill="#2c5f7c"/><text x="330" y="148" text-anchor="middle" font-size="17" font-weight="700" fill="#fff">R$ 1,20 bi</text><text x="330" y="167" text-anchor="middle" font-size="11" fill="#dbe7ee">Bahia</text>
+      <circle cx="452" cy="196" r="42" fill="#b8873a"/><text x="452" y="194" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">R$ 801 mi</text><text x="452" y="211" text-anchor="middle" font-size="10" fill="#f3e6cf">São Paulo</text>
+      <circle cx="418" cy="102" r="22" fill="#c9a878"/><text x="418" y="106" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">R$ 268 mi</text><text x="418" y="74" text-anchor="middle" font-size="10" fill="#4a5b68">Pernambuco</text>
+      <circle cx="500" cy="112" r="19" fill="#d3bb96"/><text x="500" y="116" text-anchor="middle" font-size="9" font-weight="700" fill="#5c4a12">R$ 197 mi</text><text x="500" y="86" text-anchor="middle" font-size="10" fill="#4a5b68">Minas Gerais</text>
+      <circle cx="200" cy="94" r="17" fill="#dcc9a8"/><text x="200" y="98" text-anchor="middle" font-size="9" font-weight="700" fill="#5c4a12">R$ 152 mi</text><text x="200" y="68" text-anchor="middle" font-size="10" fill="#4a5b68">Paraná</text>
+      <circle cx="156" cy="182" r="20" fill="#c9d2d8"/><text x="156" y="186" text-anchor="middle" font-size="9" font-weight="700" fill="#16232e">R$ 432 mi</text><text x="156" y="154" text-anchor="middle" font-size="10" fill="#4a5b68">Demais estados</text>
+    </svg>
+    <div class="legmapa">Representação esquemática. As formas e posições não correspondem ao contorno do território brasileiro. Círculos proporcionais em área ao valor contratado.</div>
+  </div>
+
+  <div class="mapa" id="mapa-p">
+    <h3 class="tit">Participação no total, 2025</h3>
+    <svg viewBox="0 0 620 260" height="260" role="img" aria-label="Esquema do Brasil com participação percentual por unidade da federação">
+      <rect x="0" y="0" width="620" height="260" fill="#f4f6f8"/>
+      <circle cx="330" cy="150" r="54" fill="#2c5f7c"/><text x="330" y="150" text-anchor="middle" font-size="19" font-weight="700" fill="#fff">38,7%</text><text x="330" y="168" text-anchor="middle" font-size="11" fill="#dbe7ee">Bahia</text>
+      <circle cx="452" cy="196" r="42" fill="#b8873a"/><text x="452" y="196" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">25,9%</text><text x="452" y="212" text-anchor="middle" font-size="10" fill="#f3e6cf">São Paulo</text>
+      <circle cx="418" cy="102" r="22" fill="#c9a878"/><text x="418" y="106" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">8,7%</text><text x="418" y="74" text-anchor="middle" font-size="10" fill="#4a5b68">Pernambuco</text>
+      <circle cx="500" cy="112" r="19" fill="#d3bb96"/><text x="500" y="116" text-anchor="middle" font-size="10" font-weight="700" fill="#5c4a12">6,4%</text><text x="500" y="86" text-anchor="middle" font-size="10" fill="#4a5b68">Minas Gerais</text>
+      <circle cx="200" cy="94" r="17" fill="#dcc9a8"/><text x="200" y="98" text-anchor="middle" font-size="10" font-weight="700" fill="#5c4a12">4,9%</text><text x="200" y="68" text-anchor="middle" font-size="10" fill="#4a5b68">Paraná</text>
+      <circle cx="156" cy="182" r="20" fill="#c9d2d8"/><text x="156" y="186" text-anchor="middle" font-size="10" font-weight="700" fill="#16232e">15,4%</text><text x="156" y="154" text-anchor="middle" font-size="10" fill="#4a5b68">Demais estados</text>
+    </svg>
+    <div class="legmapa">Representação esquemática. As formas e posições não correspondem ao contorno do território brasileiro. Percentuais sobre o total das compras industriais de 2025.</div>
+  </div>
+
+  <div class="fecho">A pergunta do painel executivo nasce daqui. Quase 60% da compra industrial do Estado é atendida por fornecedor de fora, e São Paulo sozinho responde por mais de quarenta por cento desse valor, em setores nos quais a Bahia já tem indústria instalada. Não é falta de oferta, é desenho de compra.</div>
+
+  <p class="nota">Valor total, série anual, concentração por grupo, contratação direta, participação de micro e pequena empresa, fragmentação, trajetória e ticket médio por secretaria foram apurados na base SIMPAS da SAEB. Os agregados de compras industriais de 2025, crescimento, origem do fornecimento e maiores setores reproduzem o Painel da Indústria e das Compras Públicas da Bahia do Núcleo de Economia Industrial do SENAI CIMATEC. A decomposição entre materiais industriais, obras, serviços de gestão e benefícios é ilustrativa e depende do de-para entre item comprado e divisão CNAE.</p>
+
+</section>
+
+<!-- ============ ABA ESTRUTURA ============ -->
+<section class="pane" id="p5">
+
+  <div class="kpirow">
+    <div><div class="n tab">704.598</div><div class="r">Estabelecimentos na Bahia em 2025</div></div>
+    <div><div class="n tab pos">+84%</div><div class="r">Crescimento no número de estabelecimentos entre 2020 e 2025</div></div>
+    <div><div class="n tab">8,9%</div><div class="r">Do total de estabelecimentos é indústria</div></div>
+    <div><div class="n tab">412 mil</div><div class="r">Vínculos formais na indústria de transformação</div></div>
+    <div><div class="n tab">9</div><div class="r">Divisões industriais com vantagem comparativa acima de 1</div></div>
+  </div>
+
+  <h2>Como a economia baiana está composta</h2>
+  <p class="chapeu">Serviços, agricultura e comércio concentram <b>91,1%</b> dos estabelecimentos do estado. A indústria é a menor fatia, e é justamente sobre ela que a compra pública pode atuar.</p>
+
+  <div class="compoleg">
+    <span><i style="background:#2c5f7c"></i>Serviços</span>
+    <span><i style="background:#4b7f99"></i>Comércio</span>
+    <span><i style="background:#85abbf"></i>Agricultura</span>
+    <span><i style="background:var(--ambar)"></i>Indústria</span>
+  </div>
+  <div class="compo">
+    <span style="width:41.4%;background:#2c5f7c">41,4%</span>
+    <span style="width:29%;background:#4b7f99">29,0%</span>
+    <span style="width:20.7%;background:#85abbf">20,7%</span>
+    <span style="width:8.9%;background:#b8873a">8,9%</span>
+  </div>
+  <p style="font-size:12px;color:var(--tinta2)">Participação no total de 704.598 estabelecimentos em 2025. A composição por vínculos formais é diferente, porque a indústria tem porte médio maior que comércio e serviços.</p>
+
+  <h2>O que está crescendo e o que está encolhendo</h2>
+  <p class="chapeu">Variação de vínculos formais entre 2023 e 2025. Setor que cresce e é comprado pelo Estado tem chance real de resposta à demanda pública. Setor que encolhe pode não conseguir atender.</p>
+
+  <div class="duas">
+    <div>
+      <h3>Maiores crescimentos</h3>
+      <div class="rank">
+        <div><span>62 Serviços de tecnologia da informação</span><span class="pos tab">+22,4%</span></div>
+        <div><span>21 Farmoquímicos e farmacêuticos</span><span class="pos tab">+14,1%</span></div>
+        <div><span>10 Produtos alimentícios</span><span class="pos tab">+9,6%</span></div>
+        <div><span>14 Confecção de artigos do vestuário</span><span class="pos tab">+7,2%</span></div>
+      </div>
+    </div>
+    <div>
+      <h3>Maiores quedas</h3>
+      <div class="rank">
+        <div><span>19 Derivados de petróleo</span><span class="neg tab">-11,8%</span></div>
+        <div><span>29 Veículos automotores</span><span class="neg tab">-8,4%</span></div>
+        <div><span>23 Minerais não metálicos</span><span class="neg tab">-5,1%</span></div>
+        <div><span>13 Produtos têxteis</span><span class="neg tab">-2,7%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Em que a Bahia é especializada</h2>
+  <p class="chapeu">Vantagem comparativa revelada. Acima de 1 indica que a atividade pesa mais na Bahia do que pesa no Brasil. Filtre pelo setor produtivo.</p>
+
+  <div class="filtros">
+    <label for="vt">Todos os setores</label>
+    <label for="vi">Indústria</label>
+    <label for="vs">Serviços</label>
+    <label for="vc">Comércio</label>
+    <label for="va">Agricultura</label>
+  </div>
+
+  <div class="hbar vr ga"><div>01 Agricultura e pecuária</div><div class="t"><i style="width:100%;background:#2d607c"></i></div><div class="n">3,12</div></div>
+  <div class="hbar vr gi"><div>20 Produtos químicos</div><div class="t"><i style="width:77%;background:#35687f"></i></div><div class="n">2,41</div></div>
+  <div class="hbar vr gi"><div>19 Derivados de petróleo</div><div class="t"><i style="width:67%;background:#3f7189"></i></div><div class="n">2,08</div></div>
+  <div class="hbar vr ga"><div>02 Produção florestal</div><div class="t"><i style="width:60%;background:#487a94"></i></div><div class="n">1,87</div></div>
+  <div class="hbar vr gi"><div>10 Produtos alimentícios</div><div class="t"><i style="width:49%;background:#5688a0"></i></div><div class="n">1,52</div></div>
+  <div class="hbar vr gc"><div>47 Comércio varejista</div><div class="t"><i style="width:46%;background:#5f90a7"></i></div><div class="n">1,44</div></div>
+  <div class="hbar vr gi"><div>13 Produtos têxteis</div><div class="t"><i style="width:43%;background:#6496ac"></i></div><div class="n">1,34</div></div>
+  <div class="hbar vr gi"><div>21 Farmoquímicos e farmacêuticos</div><div class="t"><i style="width:40%;background:#6f9db3"></i></div><div class="n">1,26</div></div>
+  <div class="hbar vr gi"><div>14 Confecção de artigos do vestuário</div><div class="t"><i style="width:38%;background:#79a4b9"></i></div><div class="n">1,17</div></div>
+  <div class="hbar vr gs"><div>86 Atividades de atenção à saúde humana</div><div class="t"><i style="width:35%;background:#85abbf"></i></div><div class="n">1,09</div></div>
+  <div class="hbar vr gs"><div>62 Serviços de tecnologia da informação</div><div class="t"><i style="width:31%;background:#9fbccb"></i></div><div class="n">0,97</div></div>
+  <div class="hbar vr gc"><div>46 Comércio atacadista</div><div class="t"><i style="width:28%;background:#adc6d3"></i></div><div class="n">0,88</div></div>
+  <div class="hbar vr gi"><div>26 Equipamentos de informática</div><div class="t"><i style="width:12%;background:#c9d2d8"></i></div><div class="n">0,38</div></div>
+
+  <details style="margin-top:14px"><summary>Como ler a vantagem comparativa revelada</summary>
+    <div class="corpo">O indicador compara a participação do setor no emprego baiano com a participação do mesmo setor no emprego brasileiro. Valor 2,41 em produtos químicos significa que o setor pesa duas vezes e meia mais na Bahia do que pesa no país. Acima de 1 há especialização, abaixo de 1 não há. É medida relativa, portanto precisa ser lida junto com o número absoluto de estabelecimentos, porque um setor pequeno pode ter índice alto sem ter escala para atender uma licitação estadual.</div>
+  </details>
+
+  <h2>A Bahia no contexto nacional</h2>
+  <p class="chapeu">Densidade de vínculos formais por estabelecimento, comparando as principais unidades da federação. Indica o porte médio das empresas em cada estado.</p>
+
+  <div class="mapa">
+    <svg viewBox="0 0 620 250" height="250" role="img" aria-label="Esquema do Brasil com vínculos por estabelecimento por unidade da federação">
+      <rect x="0" y="0" width="620" height="250" fill="#f4f6f8"/>
+      <circle cx="330" cy="140" r="44" fill="#2c5f7c"/><text x="330" y="138" text-anchor="middle" font-size="17" font-weight="700" fill="#fff">5,1</text><text x="330" y="156" text-anchor="middle" font-size="11" fill="#dbe7ee">Bahia</text>
+      <circle cx="452" cy="188" r="52" fill="#4b7f99"/><text x="452" y="186" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">7,4</text><text x="452" y="204" text-anchor="middle" font-size="11" fill="#dbe7ee">São Paulo</text>
+      <circle cx="418" cy="96" r="30" fill="#6f9db3"/><text x="418" y="100" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">4,6</text><text x="418" y="60" text-anchor="middle" font-size="10" fill="#4a5b68">Pernambuco</text>
+      <circle cx="512" cy="106" r="34" fill="#5f90a7"/><text x="512" y="110" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">5,8</text><text x="512" y="64" text-anchor="middle" font-size="10" fill="#4a5b68">Minas Gerais</text>
+      <circle cx="196" cy="92" r="32" fill="#85abbf"/><text x="196" y="96" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">6,2</text><text x="196" y="52" text-anchor="middle" font-size="10" fill="#4a5b68">Paraná</text>
+      <circle cx="160" cy="182" r="26" fill="#adc6d3"/><text x="160" y="186" text-anchor="middle" font-size="12" font-weight="700" fill="#16232e">4,1</text><text x="160" y="146" text-anchor="middle" font-size="10" fill="#4a5b68">Ceará</text>
+    </svg>
+    <div class="legmapa">Representação esquemática. As formas e posições não correspondem ao contorno do território brasileiro. Círculos proporcionais em área à razão entre vínculos formais e número de estabelecimentos.</div>
+  </div>
+
+  <h2>Onde a indústria está instalada</h2>
+  <p class="chapeu">A capacidade produtiva é concentrada no entorno de Salvador. Qualquer política de compra que pretenda desconcentrar precisa saber disso antes de prometer efeito regional.</p>
+
+  <div class="hbar"><div>Região Metropolitana de Salvador</div><div class="t"><i style="width:100%;background:#2d607c"></i></div><div class="n">61%</div></div>
+  <div class="hbar"><div>Feira de Santana e entorno</div><div class="t"><i style="width:23%;background:#487a94"></i></div><div class="n">14%</div></div>
+  <div class="hbar"><div>Oeste baiano</div><div class="t"><i style="width:15%;background:#6496ac"></i></div><div class="n">9%</div></div>
+  <div class="hbar"><div>Sul e extremo sul</div><div class="t"><i style="width:13%;background:#85abbf"></i></div><div class="n">8%</div></div>
+  <div class="hbar"><div>Demais territórios</div><div class="t"><i style="width:13%;background:#c9d2d8"></i></div><div class="n">8%</div></div>
+
+  <h2>Onde a vocação existe e a compra não chega</h2>
+  <p class="chapeu">Cruzamento entre as duas abas anteriores. São os setores em que a Bahia tem especialização produtiva e ainda assim o Estado compra de fora. É o espaço de decisão do painel.</p>
+
+  <table>
+    <thead><tr><th>Divisão</th><th>Vantagem<br>comparativa</th><th>Estabelecimentos<br>na Bahia</th><th>Compra que<br>sai do estado</th><th>Leitura</th></tr></thead>
+    <tbody>
+      <tr><td>20 Produtos químicos</td><td>2,41</td><td>418</td><td>51%</td><td style="text-align:left">Maior descompasso da base</td></tr>
+      <tr><td>21 Farmoquímicos e farmacêuticos</td><td>1,26</td><td>96</td><td>42%</td><td style="text-align:left">Oferta existe e é subutilizada</td></tr>
+      <tr><td>10 Produtos alimentícios</td><td>1,52</td><td>1.847</td><td>34%</td><td style="text-align:left">Base pulverizada, cabe credenciamento</td></tr>
+      <tr><td>13 Produtos têxteis</td><td>1,34</td><td>612</td><td>31%</td><td style="text-align:left">Vocação clara, compra pequena</td></tr>
+      <tr><td>14 Confecção</td><td>1,17</td><td>1.294</td><td>26%</td><td style="text-align:left">Melhor desempenho entre os prioritários</td></tr>
+      <tr><td>19 Derivados de petróleo</td><td>2,08</td><td>74</td><td>18%</td><td style="text-align:left">Alta vocação, o Estado compra pouco</td></tr>
+    </tbody>
+    <caption>A última linha ilustra por que o índice precisa da variável de poder de indução. Derivados de petróleo tem a segunda maior vocação do estado e mesmo assim não é prioridade, porque a compra pública é irrelevante diante do tamanho do setor.</caption>
+  </table>
+
+  <div class="fecho">A estrutura produtiva define o teto do que a compra pública pode induzir. Onde não há indústria, o instrumento correto é atração de investimento, não edital.</div>
+
+  <p class="nota">Total de estabelecimentos, crescimento entre 2020 e 2025 e composição por setor reproduzem o Painel da Indústria e das Compras Públicas da Bahia do Núcleo de Economia Industrial do SENAI CIMATEC, com base na RAIS. Os valores de vantagem comparativa revelada por divisão, variação de vínculos entre 2023 e 2025, distribuição territorial do emprego industrial e densidade por unidade da federação são ilustrativos nesta simulação e devem ser recalculados a partir da RAIS antes de qualquer citação.</p>
+
+</section>
+
+<!-- ============ ABA 2 ============ -->
+<section class="pane" id="p2">
+
+  <h2>Matriz de posicionamento setorial</h2>
+  <p class="chapeu">Cada bolha é um setor. O eixo horizontal é o crescimento da compra pública entre 2023 e 2025 e o vertical é o volume contratado. O tamanho da bolha indica a dependência de fornecedor externo.</p>
+
+  <div class="mapa">
+    <svg viewBox="0 0 620 340" height="340" role="img" aria-label="Matriz de posicionamento com quatro quadrantes">
+      <rect x="58" y="14" width="546" height="264" fill="#fafbfc" stroke="#e3e8eb"/>
+      <rect x="331" y="14" width="273" height="132" fill="#eef3f6"/>
+      <line x1="331" y1="14" x2="331" y2="278" stroke="#c4cfd6" stroke-dasharray="4 4"/>
+      <line x1="58" y1="146" x2="604" y2="146" stroke="#c4cfd6" stroke-dasharray="4 4"/>
+      <text x="596" y="32" text-anchor="end" font-size="10.5" font-weight="700" fill="#2c5f7c" letter-spacing=".5">PRIORIDADE MÁXIMA</text>
+      <text x="66" y="32" font-size="10.5" font-weight="700" fill="#4a5b68" letter-spacing=".5">GARGALO</text>
+      <text x="596" y="270" text-anchor="end" font-size="10.5" font-weight="700" fill="#4a5b68" letter-spacing=".5">OPORTUNIDADE</text>
+      <text x="66" y="270" font-size="10.5" font-weight="700" fill="#8b98a3" letter-spacing=".5">MONITORAR</text>
+
+      <circle cx="452" cy="52" r="30" fill="#2c5f7c" opacity=".82"/><text x="452" y="56" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">21</text>
+      <circle cx="404" cy="104" r="22" fill="#4b7f99" opacity=".82"/><text x="404" y="108" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">62</text>
+      <circle cx="252" cy="86" r="25" fill="#b8873a" opacity=".82"/><text x="252" y="90" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">20</text>
+      <circle cx="368" cy="168" r="20" fill="#6f9db3" opacity=".82"/><text x="368" y="172" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">10</text>
+      <circle cx="446" cy="212" r="15" fill="#85abbf" opacity=".82"/><text x="446" y="216" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">14</text>
+      <circle cx="286" cy="228" r="14" fill="#9fbccb" opacity=".82"/><text x="286" y="232" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">13</text>
+      <circle cx="176" cy="196" r="12" fill="#c9d2d8"/><text x="176" y="200" text-anchor="middle" font-size="9" font-weight="700" fill="#16232e">23</text>
+      <circle cx="146" cy="238" r="11" fill="#c9d2d8"/><text x="146" y="242" text-anchor="middle" font-size="9" font-weight="700" fill="#16232e">25</text>
+
+      <text x="24" y="150" font-size="10.5" fill="#4a5b68" transform="rotate(-90 24 150)" text-anchor="middle">Volume contratado</text>
+      <text x="331" y="302" text-anchor="middle" font-size="10.5" fill="#4a5b68">Crescimento da compra pública, 2023 a 2025</text>
+      <text x="62" y="294" font-size="10" fill="#8b98a3">queda</text>
+      <text x="600" y="294" text-anchor="end" font-size="10" fill="#8b98a3">alta</text>
+    </svg>
+    <div class="legmapa">Números correspondem à divisão CNAE. Prioridade máxima reúne volume alto e crescimento alto. Gargalo reúne volume alto e crescimento baixo, indicando restrição ou dependência. Oportunidade reúne volume baixo e crescimento alto. Monitorar reúne volume e crescimento baixos.</div>
+  </div>
+
+  <h2>Dependência de fornecedor externo</h2>
+  <p class="chapeu">Percentual do valor contratado atendido por fornecedor de fora da Bahia, por setor. Quanto maior a barra, maior o valor que sai do estado.</p>
+
+  <div class="hbar"><div>20 Produtos químicos</div><div class="t"><i style="width:100%;background:var(--ambar)"></i></div><div class="n">51%</div></div>
+  <div class="hbar"><div>21 Farmoquímicos e farmacêuticos</div><div class="t"><i style="width:82%;background:#c49452"></i></div><div class="n">42%</div></div>
+  <div class="hbar"><div>10 Produtos alimentícios</div><div class="t"><i style="width:67%;background:#cfa76f"></i></div><div class="n">34%</div></div>
+  <div class="hbar"><div>13 Produtos têxteis</div><div class="t"><i style="width:61%;background:#d8b98c"></i></div><div class="n">31%</div></div>
+  <div class="hbar"><div>62 Serviços de tecnologia da informação</div><div class="t"><i style="width:57%;background:#e0caa6"></i></div><div class="n">29%</div></div>
+  <div class="hbar"><div>14 Confecção de artigos do vestuário</div><div class="t"><i style="width:51%;background:#e8dbc2"></i></div><div class="n">26%</div></div>
+
+  <h2>Síntese por setor</h2>
+  <table>
+    <thead><tr><th>CNAE</th><th>Setor</th><th>2023</th><th>2025</th><th>Variação</th><th>Dependência<br>externa 2025</th><th>IPS</th></tr></thead>
+    <tbody>
+      <tr><td>21</td><td>Farmoquímicos e farmacêuticos</td><td>R$ 698 mi</td><td>R$ 886 mi</td><td class="pos">+26,9%</td><td>42%</td><td><b>0,82</b></td></tr>
+      <tr><td>62</td><td>Serviços de tecnologia da informação</td><td>R$ 412 mi</td><td>R$ 531 mi</td><td class="pos">+28,9%</td><td>29%</td><td><b>0,76</b></td></tr>
+      <tr><td>10</td><td>Produtos alimentícios</td><td>R$ 336 mi</td><td>R$ 389 mi</td><td class="pos">+15,8%</td><td>34%</td><td><b>0,73</b></td></tr>
+      <tr><td>20</td><td>Produtos químicos</td><td>R$ 298 mi</td><td>R$ 274 mi</td><td class="neg">-8,1%</td><td>51%</td><td><b>0,68</b></td></tr>
+      <tr><td>14</td><td>Confecção de artigos do vestuário</td><td>R$ 158 mi</td><td>R$ 181 mi</td><td class="pos">+14,6%</td><td>26%</td><td><b>0,64</b></td></tr>
+      <tr><td>13</td><td>Produtos têxteis</td><td>R$ 104 mi</td><td>R$ 112 mi</td><td class="pos">+7,7%</td><td>31%</td><td><b>0,61</b></td></tr>
+      <tr><td>29</td><td>Veículos automotores</td><td>R$ 561 mi</td><td>R$ 506 mi</td><td class="neg">-9,8%</td><td>78%</td><td>0,44</td></tr>
+    </tbody>
+    <caption>A última linha mostra por que volume não basta como critério. Veículos automotores é o segundo maior setor em valor, mas tem dependência externa de 78% e compra em queda, o que o coloca fora da prioridade apesar do tamanho.</caption>
+  </table>
+
+  <h2>Impacto por setor, por R$ 1 milhão de compra</h2>
+  <p class="chapeu">Efeito estimado de R$ 1 milhão aplicado integralmente em cada setor. Cada linha é independente das demais.</p>
+  <table>
+    <thead><tr><th>Setores prioritários</th><th>PIB a preços<br>de fatores</th><th>Produção</th><th>Arrecadação<br>indireta</th><th>Renda do<br>trabalho</th><th>Emprego<br>em postos</th></tr></thead>
+    <tbody>
+      <tr><td>21 Farmoquímicos e farmacêuticos</td><td>R$ 580 mil</td><td>R$ 1,74 mi</td><td>R$ 110 mil</td><td>R$ 260 mil</td><td>9,4</td></tr>
+      <tr><td>62 Serviços de tecnologia da informação</td><td>R$ 710 mil</td><td>R$ 1,52 mi</td><td>R$ 70 mil</td><td>R$ 440 mil</td><td>16,2</td></tr>
+      <tr><td>10 Produtos alimentícios</td><td>R$ 490 mil</td><td>R$ 1,96 mi</td><td>R$ 90 mil</td><td>R$ 210 mil</td><td>21,7</td></tr>
+      <tr><td>20 Produtos químicos</td><td>R$ 440 mil</td><td>R$ 1,81 mi</td><td>R$ 130 mil</td><td>R$ 170 mil</td><td>6,1</td></tr>
+      <tr><td>14 Confecção de artigos do vestuário</td><td>R$ 520 mil</td><td>R$ 1,63 mi</td><td>R$ 80 mil</td><td>R$ 290 mil</td><td>28,3</td></tr>
+      <tr><td>13 Produtos têxteis</td><td>R$ 470 mil</td><td>R$ 1,71 mi</td><td>R$ 80 mil</td><td>R$ 230 mil</td><td>19,5</td></tr>
+    </tbody>
+    <caption>Emprego e renda do trabalho aparecem juntos de propósito. Multiplicador de emprego alto com renda baixa indica ocupação de baixa remuneração, e essa tensão precisa ficar visível para quem decide. Fonte prevista: Atlas Econômico, IPEA e Receita Federal.</caption>
+  </table>
+
+  <h2>Origem do fornecimento por setor</h2>
+  <table>
+    <thead><tr><th>Setores prioritários</th><th>Indústria<br>na Bahia</th><th>Comércio<br>na Bahia</th><th>Fora<br>da Bahia</th></tr></thead>
+    <tbody>
+      <tr><td>21 Farmoquímicos e farmacêuticos</td><td>34%</td><td>24%</td><td>42%</td></tr>
+      <tr><td>62 Serviços de tecnologia da informação</td><td>51%</td><td>20%</td><td>29%</td></tr>
+      <tr><td>10 Produtos alimentícios</td><td>46%</td><td>20%</td><td>34%</td></tr>
+      <tr><td>20 Produtos químicos</td><td>29%</td><td>20%</td><td>51%</td></tr>
+      <tr><td>14 Confecção de artigos do vestuário</td><td>54%</td><td>20%</td><td>26%</td></tr>
+      <tr><td>13 Produtos têxteis</td><td>49%</td><td>20%</td><td>31%</td></tr>
+    </tbody>
+    <caption>A coluna de comércio na Bahia separa compra que induz produção de compra que remunera intermediação. Resulta do cruzamento do CNPJ do fornecedor com a base da Receita Federal, usando a CNAE da matriz para classificar e o estabelecimento contratado para localizar.</caption>
+  </table>
+
+  <h2>Decomposição do índice nas sete variáveis</h2>
+  <table>
+    <thead><tr><th>Setor</th><th>VCR</th><th>Densidade</th><th>Estabel.</th><th>Mediana<br>anual</th><th>Frequência</th><th>Suprim.<br>local</th><th>Poder de<br>indução</th><th>IPS</th></tr></thead>
+    <tbody>
+      <tr><td>21 Farmoquímicos</td><td>0,81</td><td>0,74</td><td>0,72</td><td>0,96</td><td>1,00</td><td>0,58</td><td>0,89</td><td><b>0,82</b></td></tr>
+      <tr><td>62 Tecnologia da informação</td><td>0,62</td><td>0,68</td><td>0,58</td><td>0,92</td><td>1,00</td><td>0,71</td><td>0,80</td><td><b>0,76</b></td></tr>
+      <tr><td>10 Produtos alimentícios</td><td>0,78</td><td>0,71</td><td>0,66</td><td>0,84</td><td>1,00</td><td>0,66</td><td>0,44</td><td><b>0,73</b></td></tr>
+      <tr><td>20 Produtos químicos</td><td>0,94</td><td>0,86</td><td>0,73</td><td>0,61</td><td>0,80</td><td>0,49</td><td>0,32</td><td><b>0,68</b></td></tr>
+      <tr><td>14 Confecção</td><td>0,69</td><td>0,66</td><td>0,63</td><td>0,55</td><td>1,00</td><td>0,74</td><td>0,41</td><td><b>0,64</b></td></tr>
+      <tr><td>13 Produtos têxteis</td><td>0,71</td><td>0,64</td><td>0,58</td><td>0,48</td><td>0,80</td><td>0,69</td><td>0,46</td><td><b>0,61</b></td></tr>
+      <tr><td>32 Produtos diversos</td><td>0,54</td><td>0,58</td><td>0,51</td><td>0,52</td><td>0,60</td><td>0,61</td><td>0,55</td><td>0,56</td></tr>
+      <tr><td>22 Borracha e plástico</td><td>0,66</td><td>0,61</td><td>0,57</td><td>0,44</td><td>0,60</td><td>0,52</td><td>0,38</td><td>0,54</td></tr>
+      <tr><td>23 Minerais não metálicos</td><td>0,58</td><td>0,55</td><td>0,60</td><td>0,39</td><td>0,60</td><td>0,57</td><td>0,29</td><td>0,50</td></tr>
+      <tr><td>25 Produtos de metal</td><td>0,49</td><td>0,52</td><td>0,54</td><td>0,41</td><td>0,60</td><td>0,44</td><td>0,31</td><td>0,47</td></tr>
+    </tbody>
+    <caption>Valores em posto percentil de 0 a 1. Leitura: a divisão 20 lidera em vocação e é fraca em demanda, portanto pede política de fomento, não mudança de edital. A divisão 62 tem o inverso, o Estado compra muito e a vocação é média, portanto o instrumento de compra é a alavanca disponível.</caption>
+  </table>
+
+</section>
+
+<!-- ============ ABA 3 ============ -->
+<section class="pane" id="p3">
+
+  <h2>Universo de setores</h2>
+  <p class="chapeu" style="font-size:13.5px">Divisões 10 a 33 da CNAE, correspondentes à indústria de transformação, mais as divisões 62 e 63, de serviços de tecnologia da informação. Vinte e seis divisões no total.</p>
+  <p style="font-size:12.5px;color:var(--tinta2);max-width:840px">A inclusão obedece a duas condições declaradas, e não a rótulo de seção. Primeira, o setor precisa ser transacionável, ou seja, o fornecimento poderia vir de fora do estado, de modo que comprar localmente seja uma decisão real. Segunda, o Estado precisa comprar daquele setor em escala relevante. A construção civil falha na primeira condição, porque a obra é executada onde está, e por isso foi excluída apesar de ser o maior item de despesa. A indústria extrativa falha na segunda. O índice deve ser calculado também sem as divisões 62 e 63, como teste de robustez: se as primeiras posições não mudarem, a inclusão dos serviços de tecnologia não é conveniência.</p>
+
+  <h2>As sete variáveis</h2>
+  <table>
+    <thead><tr><th>Variável</th><th>Definição e fórmula</th><th>O que representa</th><th>Fonte e nível</th><th>Leitura</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>VCR</td>
+        <td>Vantagem comparativa revelada. (emprego do setor na BA ÷ emprego total da BA) ÷ (emprego do setor no Brasil ÷ emprego total do Brasil). Valor acima de 1 indica especialização.</td>
+        <td>Se a Bahia já tem vocação relativa naquele setor. Setor sem vocação exige política de atração de investimento, não de compra.</td>
+        <td>RAIS, divisão CNAE</td>
+        <td>Maior é melhor</td>
+      </tr>
+      <tr>
+        <td>Densidade</td>
+        <td>Relatedness. Proximidade entre pares de setores, φij = mín{P(VCRi | VCRj), P(VCRj | VCRi)}, estimada no painel de unidades da federação. Densidade do setor = Σj φij·Mj ÷ Σj φij, com M binária de VCR maior que 1 na Bahia.</td>
+        <td>Quão próximo o setor está da estrutura que a Bahia já domina. Salto produtivo curto tem taxa de sucesso maior que salto longo.</td>
+        <td>RAIS, divisão CNAE</td>
+        <td>Maior é melhor</td>
+      </tr>
+      <tr>
+        <td>Estabelecimentos</td>
+        <td>Contagem de estabelecimentos do setor na Bahia, média de 2021 a 2025.</td>
+        <td>Capacidade absoluta de atendimento. Corrige o VCR, que é medida relativa e pode premiar setor especializado porém pequeno demais para atender uma licitação estadual.</td>
+        <td>RAIS ou CEMPRE do IBGE, divisão CNAE</td>
+        <td>Maior é melhor</td>
+      </tr>
+      <tr>
+        <td>Mediana anual</td>
+        <td>Mediana do valor anual contratado entre 2021 e 2025, a preços de 2025 deflacionados pelo IPCA.</td>
+        <td>Escala da demanda pública. Usa mediana e não média para que um pico isolado em um único ano não eleve o setor.</td>
+        <td>SIMPAS da SAEB</td>
+        <td>Maior é melhor</td>
+      </tr>
+      <tr>
+        <td>Frequência</td>
+        <td>Número de anos com contratação dividido por 5.</td>
+        <td>Separa compra estruturante de compra episódica. Um setor comprado uma única vez em cinco anos recebe 0,2 e não é tratado como prioridade permanente.</td>
+        <td>SIMPAS da SAEB</td>
+        <td>Maior é melhor</td>
+      </tr>
+      <tr>
+        <td>Suprimento local industrial</td>
+        <td>Valor contratado de fornecedores industriais sediados na Bahia dividido pelo valor total contratado do setor.</td>
+        <td>Distingue compra que induz produção de compra que remunera intermediação. É a variável central da tese.</td>
+        <td>SIMPAS da SAEB cruzado com CNPJ dos Dados Abertos da Receita Federal</td>
+        <td>Maior é melhor</td>
+      </tr>
+      <tr>
+        <td>Poder de indução</td>
+        <td>Compra pública estadual do setor dividida pelo valor da produção do setor na Bahia, ou pela massa salarial do setor como alternativa.</td>
+        <td>Verifica se o Estado tem peso suficiente para induzir. Sem esta variável o índice pode priorizar setor no qual o Estado é comprador irrelevante.</td>
+        <td>SIMPAS da SAEB com Atlas Econômico do IPEA, ou com RAIS</td>
+        <td>Maior é melhor</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Normalização e composição</h2>
+  <p style="font-size:13px;max-width:840px">Cada variável é convertida em posto percentil dentro do universo de 26 divisões. Para a variável x e o setor i, o percentil é o número de setores com valor menor ou igual a x(i) dividido pelo total de setores, resultando em valor contínuo entre 0 e 1. O posto percentil é preferido ao mínimo-máximo por ser robusto a valor extremo e por permitir comparação direta com outro estado, já que não depende da escala absoluta das variáveis baianas.</p>
+  <p style="font-size:13px;max-width:840px">O índice composto é IPS(i) = 0,5 × média dos três percentis do bloco de vocação produtiva local + 0,5 × média dos quatro percentis do bloco de demanda pública. O peso é igual entre blocos, e não entre variáveis, para que o bloco com mais variáveis não domine o índice sem que essa decisão tenha sido declarada.</p>
+  <p style="font-size:13px;max-width:840px">O corte de prioridade é o primeiro quartil do IPS, ou seja, os setores acima do percentil 75 do índice composto. Em um universo de 26 divisões isso corresponde a 6,5 setores, e o arredondamento para baixo mantém seis setores prioritários.</p>
+
+  <h2>Separação entre índice e impacto</h2>
+  <p style="font-size:13px;max-width:840px">Os multiplicadores da matriz insumo-produto não entram no índice. Eles são aplicados apenas na etapa de impacto, depois que os setores prioritários já foram definidos. A razão é evitar dupla contagem: o índice de ligação para trás de Rasmussen-Hirschman é a soma da coluna da inversa de Leontief dividida pela média das colunas, e o multiplicador de produção é a mesma soma sem normalizar. São a mesma informação em escalas diferentes. Como a matriz do Atlas Econômico é inter-regional, com fluxos entre estados explícitos, o multiplicador da Bahia já desconta insumo comprado de outros estados, enquanto a variável de suprimento local mede outra coisa, que é a origem da compra direta do Estado.</p>
+
+  <h2>Passos para replicar em outro estado</h2>
+  <p style="font-size:13px;max-width:840px">Primeiro, obter a base de contratações do estado no Portal Nacional de Contratações Públicas, obrigatório pela Lei 14.133 de 2021. Segundo, cruzar o CNPJ do fornecedor com os Dados Abertos da Receita Federal para obter unidade da federação, município e CNAE, usando a CNAE da matriz para classificar o setor e o estabelecimento contratado de catorze dígitos para localizar. Terceiro, construir o de-para entre item comprado e divisão CNAE, manualmente para as categorias que cobrem 80% do valor, e publicá-lo como apêndice. Quarto, calcular VCR, densidade e estabelecimentos com a RAIS do estado. Quinto, converter tudo em posto percentil e compor o índice com peso igual entre blocos. Sexto, aplicar os multiplicadores do Atlas Econômico apenas aos setores prioritários, agregando da divisão CNAE para o nível de 68 atividades das Contas Nacionais.</p>
+
+  <p class="nota">Fontes previstas na versão com dados reais: SIMPAS, Secretaria da Administração do Estado da Bahia, exercícios de 2021 a 2025. RAIS, Ministério do Trabalho e Emprego. Cadastro Nacional da Pessoa Jurídica, Dados Abertos da Receita Federal. Atlas Econômico, IPEA e Receita Federal, matrizes insumo-produto inter-regionais em 68 atividades e 128 produtos, cobrindo as 27 unidades da federação. Correspondência entre CNAE 2.0 e as atividades das Contas Nacionais, IBGE.</p>
+
+</section>
+
+</div>
+<script>
+(function(){
+  /* ---------- 2. Impacto econômico: cálculo por pontos percentuais ---------- */
+  var btn = document.getElementById('calcular');
+  if (btn) {
+    btn.addEventListener('click', calcular);
+    document.getElementById('pp').addEventListener('keydown', function(e){
+      if (e.key === 'Enter') calcular();
+    });
+  }
+  function brl(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  function moeda(v){
+    if (v >= 1000) return 'R$ ' + (v / 1000).toFixed(2).replace('.', ',').replace(/0$/, '') + ' bi';
+    return 'R$ ' + brl(v) + ' mi';
+  }
+  function ptbr(v){ return (Math.round(v * 10) / 10).toString().replace('.', ','); }
+  function calcular(){
+    var el = document.getElementById('resultado');
+    var inp = document.getElementById('pp');
+    var pp = parseFloat(String(inp.value).replace(',', '.'));
+    if (isNaN(pp) || pp < 1 || pp > 100) {
+      el.innerHTML = '<p class="frase" style="color:#a4432f">Informe um valor entre 1 e 100 pontos percentuais.</p>';
+      el.style.display = 'block';
+      return;
+    }
+    var red = pp * 35.8, prod = pp * 62.5, pib = pp * 19.75;
+    var renda = pp * 9.95, arrec = pp * 3.6, postos = pp * 592.8;
+    el.innerHTML =
+      '<p class="frase">Deslocar <b>' + ptbr(pp) + ' pontos percentuais</b> para indústria baiana redireciona <b>' + moeda(red) + ' por ano</b> e gera <b>' + moeda(prod) + '</b> em produção, <b>' + moeda(arrec) + '</b> em arrecadação e <b>' + brl(postos) + ' postos de trabalho</b> no estado.</p>' +
+      '<div class="quatro" style="grid-template-columns:repeat(5,1fr)">' +
+        '<div><div class="n tab">' + moeda(prod) + '</div><div class="r">Produção gerada na Bahia</div></div>' +
+        '<div><div class="n tab">' + moeda(pib) + '</div><div class="r">PIB a preços de fatores</div></div>' +
+        '<div><div class="n tab">' + moeda(renda) + '</div><div class="r">Renda paga a trabalhadores</div></div>' +
+        '<div><div class="n tab">' + moeda(arrec) + '</div><div class="r">Arrecadação de impostos indiretos</div></div>' +
+        '<div><div class="n tab">' + brl(postos) + '</div><div class="r">Postos de trabalho no ano</div></div>' +
+      '</div>';
+    el.style.display = 'block';
+  }
+
+  /* ---------- 3. Mapa e filtros ---------- */
+  var FSETOR = document.getElementById('fsetor');
+  if (FSETOR) {
+    FSETOR.addEventListener('change', aplicarFiltros);
+    document.getElementById('fmunicipio').addEventListener('change', aplicarFiltros);
+    document.getElementById('fporte').addEventListener('change', aplicarFiltros);
+  }
+  var CIDADES = {
+    sal:{lat:-12.97,lng:-38.51,nome:"Salvador",cor:"#2c5f7c",tCor:"#fff"},
+    cam:{lat:-12.69,lng:-38.32,nome:"Camaçari",cor:"#4b7f99",tCor:"#fff"},
+    fsa:{lat:-12.27,lng:-38.97,nome:"Feira de Santana",cor:"#4b7f99",tCor:"#fff"},
+    ala:{lat:-12.13,lng:-38.41,nome:"Alagoinhas",cor:"#6f9db3",tCor:"#fff"},
+    pao:{lat:-9.41,lng:-38.22,nome:"Paulo Afonso",cor:"#85abbf",tCor:"#fff"},
+    jua:{lat:-9.42,lng:-40.50,nome:"Juazeiro",cor:"#6f9db3",tCor:"#fff"},
+    lem:{lat:-12.09,lng:-45.80,nome:"Luís Eduardo Magalhães",cor:"#6f9db3",tCor:"#fff"},
+    bar:{lat:-12.15,lng:-44.99,nome:"Barreiras",cor:"#85abbf",tCor:"#fff"},
+    jeq:{lat:-13.85,lng:-40.08,nome:"Jequié",cor:"#6f9db3",tCor:"#fff"},
+    vco:{lat:-14.86,lng:-40.84,nome:"Vitória da Conquista",cor:"#4b7f99",tCor:"#fff"},
+    ilh:{lat:-14.79,lng:-39.05,nome:"Ilhéus e Itabuna",cor:"#85abbf",tCor:"#fff"},
+    saj:{lat:-12.97,lng:-39.26,nome:"Santo Antônio de Jesus",cor:"#9fbccb",tCor:"#16232e"},
+    can:{lat:-12.67,lng:-38.33,nome:"Candeias",cor:"#6f9db3",tCor:"#fff"},
+    lau:{lat:-12.89,lng:-38.32,nome:"Lauro de Freitas",cor:"#6f9db3",tCor:"#fff"},
+    sfi:{lat:-12.79,lng:-38.16,nome:"Simões Filho",cor:"#6f9db3",tCor:"#fff"}
+  };
+  function iconeCidade(c, n){
+    var r = 9 + n * 2.2, s = Math.round(2 * r);
+    var fs = Math.max(10, Math.round(r * 0.85));
+    return L.divIcon({
+      className: 'pin-cidade',
+      html: '<div class="pin" style="width:' + s + 'px;height:' + s + 'px;line-height:' + s + 'px;' +
+        'background:' + c.cor + ';color:' + c.tCor + ';font-size:' + fs + 'px">' + n + '</div>',
+      iconSize: [s, s],
+      iconAnchor: [s / 2, s / 2]
+    });
+  }
+  var mapa = null, marcadores = {};
+  if (typeof L !== 'undefined' && document.getElementById('mapa-leaflet')) {
+    mapa = L.map('mapa-leaflet', {scrollWheelZoom: false}).setView([-12.5, -42.0], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18
+    }).addTo(mapa);
+    var limites = [], cidInit;
+    for (cidInit in CIDADES) {
+      var ci = CIDADES[cidInit];
+      var mi = L.marker([ci.lat, ci.lng], {icon: iconeCidade(ci, 1), opacity: 0});
+      mi.bindTooltip(ci.nome, {permanent: true, direction: 'top', className: 'lbl-mapa', offset: [0, -6]});
+      mi.addTo(mapa);
+      marcadores[cidInit] = mi;
+      limites.push([ci.lat, ci.lng]);
+    }
+    mapa.fitBounds(L.latLngBounds(limites), {padding: [26, 26]});
+    mapa.invalidateSize();
+  }
+  var CID = {
+    'Salvador':'sal','Camaçari':'cam','Feira de Santana':'fsa','Alagoinhas':'ala','Paulo Afonso':'pao',
+    'Juazeiro':'jua','Luís Eduardo Magalhães':'lem','Barreiras':'bar','Jequié':'jeq',
+    'Vitória da Conquista':'vco','Ilhéus':'ilh','Itabuna':'ilh','Santo Antônio de Jesus':'saj',
+    'Candeias':'can','Lauro de Freitas':'lau','Simões Filho':'sfi'
+  };
+  var NOMES = {
+    '21':'farmoquímicos e farmacêuticos','62':'serviços de tecnologia da informação',
+    '10':'produtos alimentícios','20':'produtos químicos','14':'confecção de artigos do vestuário',
+    '13':'produtos têxteis'
+  };
+  var MUN = {'sal':'Salvador','fsa':'Feira de Santana','cam':'Camaçari','int':'demais municípios'};
+  var PORTE = {'gr':'grande','me':'médio','pe':'pequeno','mi':'micro'};
+
+  function aplicarFiltros(){
+    var setor = FSETOR.value, mun = document.getElementById('fmunicipio').value;
+    var porte = document.getElementById('fporte').value;
+    var trs = document.querySelectorAll('.caixa tbody tr');
+    var cont = 0, i, tr, ok, porCidade = {};
+    for (i = 0; i < trs.length; i++) {
+      tr = trs[i];
+      ok = true;
+      if (setor !== 'todos' && tr.className.indexOf(' s' + setor) === -1) ok = false;
+      if (ok && mun !== 'todos' && tr.className.indexOf(' mu-' + mun) === -1) ok = false;
+      if (ok && porte !== 'todos' && tr.className.indexOf(' po-' + porte) === -1) ok = false;
+      if (ok) {
+        tr.style.display = '';
+        cont++;
+        var cid = CID[tr.cells[1].textContent.trim()];
+        if (cid) porCidade[cid] = (porCidade[cid] || 0) + 1;
+      } else {
+        tr.style.display = 'none';
+      }
+    }
+    var partes = [];
+    if (setor !== 'todos') partes.push(NOMES[setor]);
+    if (mun !== 'todos') partes.push(MUN[mun]);
+    if (porte !== 'todos') partes.push('porte ' + PORTE[porte]);
+    var cnt = document.getElementById('contador');
+    cnt.textContent = cont + ' empresa' + (cont === 1 ? '' : 's') +
+      (partes.length ? ' em ' + partes.join(', ') : ' nos seis setores prioritários');
+    atualizarMapa(porCidade);
+  }
+
+  function atualizarMapa(porCidade){
+    if (!mapa) return;
+    var cid, c, n, m;
+    for (cid in CIDADES) {
+      c = CIDADES[cid];
+      n = porCidade[cid] || 0;
+      m = marcadores[cid];
+      if (!m) continue;
+      if (n === 0) { m.setOpacity(0); continue; }
+      m.setOpacity(1);
+      m.setIcon(iconeCidade(c, n));
+    }
+  }
+  aplicarFiltros();
+})();
+</script>
+</body>
+</html>
